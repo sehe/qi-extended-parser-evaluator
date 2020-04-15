@@ -66,22 +66,28 @@ static inline void foo() {
     void(a != b);
 }
 
+static bool eval_trace = false;
+
 void check_eval(Eval::Expando context, std::vector<std::string> const& inputs) {
     Parser::Expression<std::string::const_iterator> const g;
     Eval::Evaluator evaluator{ context };
 
-    evaluator.on_assign.connect([&context](Eval::LValue dest, Eval::RValue value) {
-        std::cout << "Assigning " << value << " to " << context.path_to(dest).value_or("?") << "\n";
-    });
-    evaluator.on_invoke.connect([](Ast::Call const& call, Eval::RValue retval) {
-        std::cout << "Invoking: " << call << " -> " << retval << "\n";
-    });
+    if (eval_trace) {
+        evaluator.on_assign.connect([&context](Eval::LValue dest, Eval::RValue value) {
+            std::cout << "Assigning " << value << " to " << context.path_to(dest).value_or("?") << "\n";
+        });
+        evaluator.on_invoke.connect([](Ast::Call const& call, Eval::RValue retval) {
+            std::cout << "Invoking: " << call << " -> " << retval << "\n";
+        });
+    }
 
     for (std::string const str : inputs) {
         std::vector<std::pair<std::string, std::string> > accesses;
 
         boost::signals2::scoped_connection on_access =
             evaluator.on_access.connect([&context,&accesses](Eval::LValue var) {
+                if (!eval_trace)
+                    return;
                 auto path = context.path_to(var).value_or("?");
                 if (!accesses.empty() && 0 == path.find(accesses.back().first)) // condense sub-object accesses
                     accesses.back() = {path,boost::lexical_cast<std::string>(var)};
@@ -303,6 +309,8 @@ int main(int argc, char const** argv) {
     if (args.count("generate")) {
         generate_cases();
     }
+
+    eval_trace = args.count("trace");
 
     if (args.count("ast")) {
         size_t good=0, bad=0;

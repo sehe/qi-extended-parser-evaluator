@@ -302,34 +302,28 @@ namespace Eval {
         }
 
         // Expression
-        RValue call(Ast::Boolean const& o) { return o; }
-        RValue call(Ast::Number const& o) { return o; }
-        RValue call(Ast::String const& o) { return o; }
+        RValue call(Ast::Boolean const& o)    { return o; }
+        RValue call(Ast::Number const& o)     { return o; }
+        RValue call(Ast::String const& o)     { return o; }
         LValue call(Ast::Identifier const& o) { return access(_ctx, o); }
-
-        Dynamic call(Ast::Member const& o) {
-            std::cout << "Last evaluated member: " << o << "\n";
-            return access(call(o.obj), o.member);
-        }
+        Dynamic call(Ast::Member const& o)    { return access(call(o.obj), o.member); }
 
         RValue call(Ast::Unary const& o) {
             RValue const rhs = call(o.rhs);
 
             switch (o.op) {
-            case Ast::Operator::Plus:
-                return rhs;
-            case Ast::Operator::Minus:
-                return boost::apply_visitor(detail::Arithmetic<std::negate<>>{}, rhs);
-            case Ast::Operator::NOT:
-                return boost::apply_visitor(detail::Logical<std::logical_not<>>{}, rhs);
-            default:
-                throw std::runtime_error("Not implemented");
+              case Ast::Operator::Plus:  return rhs;
+              case Ast::Operator::Minus: return boost::apply_visitor(detail::Arithmetic<std::negate<>>{}, rhs);
+              case Ast::Operator::NOT:   return boost::apply_visitor(detail::Logical<std::logical_not<>>{}, rhs);
+              default:
+                  throw std::runtime_error("Not implemented");
             }
         }
 
         Dynamic call(Ast::Binary const& o) {
-            Dynamic lhs = call(o.lhs);
+            Dynamic lhs = call(o.lhs); // be sure to evaluate only once
             Dynamic rhs = call(o.rhs);
+
             ValueV rhsv = lhs.value();
             ValueV lhsv = rhs.value();
 
