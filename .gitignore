@@ -1,0 +1,9 @@
+.*.sw?
+test.exe
+output.txt
+Makefile
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Session.vim
