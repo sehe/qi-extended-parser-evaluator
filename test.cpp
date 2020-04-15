@@ -44,7 +44,7 @@ static inline Eval::Value demofunction(Eval::Values const& params) {
 
 static inline auto make_context() {
     using namespace Eval;
-    Expando ctx;
+    Variable ctx;
     Value f = demofunction;
     Value identity = [](Values v) { return v.front(); };
     ctx["a"] = Value(43);
@@ -68,7 +68,7 @@ static inline void foo() {
 
 static bool eval_trace = false;
 
-void check_eval(Eval::Expando context, std::vector<std::string> const& inputs) {
+void check_eval(Eval::Variable context, std::vector<std::string> const& inputs) {
     Parser::Expression<std::string::const_iterator> const g;
     Eval::Evaluator evaluator{ context };
 

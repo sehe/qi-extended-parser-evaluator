@@ -42,23 +42,23 @@ namespace Eval {
 
     // Reflects a dynamic object instance in the Evaluation engine. Losely
     // based on the idea of ExpandoObject in System.Dynamic from the CLR
-    struct Expando {
-        using Sub = boost::recursive_wrapper<Expando>;
+    struct Variable {
+        using Sub = boost::recursive_wrapper<Variable>;
         using Key = std::string;
 
         using Array = std::vector<Sub>;
         using Object = std::map<Key, Sub>;
 
-        Expando() = default;
-        Expando(Value  v) : _value(std::move(v)) {}
-        Expando(Object v) : _object(std::move(v)) {}
-        Expando(Array  v) : _array(std::move(v)) {}
+        Variable() = default;
+        Variable(Value  v) : _value(std::move(v)) {}
+        Variable(Object v) : _object(std::move(v)) {}
+        Variable(Array  v) : _array(std::move(v)) {}
 
         Value  _value;
         Object _object;
         Array  _array;
 
-        Expando& operator[](Values indices) {
+        Variable& operator[](Values indices) {
             if (indices.empty())
                 return *this;
 
@@ -68,7 +68,7 @@ namespace Eval {
                 auto i = index->convert_to<std::size_t>();
 
                 if (i >= _array.size()) {
-                    _array.insert(_array.end(), 1 + i - _array.size(), Expando{});
+                    _array.insert(_array.end(), 1 + i - _array.size(), Variable{});
                 }
                 indices.erase(indices.begin());
                 return _array.at(i).get()[indices];
@@ -77,7 +77,7 @@ namespace Eval {
                 auto it = _object.find(*key);
 
                 if (it == _object.end()) {
-                    auto insertion = _object.emplace(*key, Expando{});
+                    auto insertion = _object.emplace(*key, Variable{});
                     it = insertion.first;
                 }
                 indices.erase(indices.begin());
@@ -87,9 +87,9 @@ namespace Eval {
             throw std::runtime_error("Type Mismatch: " + type_name(f));
         }
 
-        Expando& operator[](Value const& key) { return operator[](Values{ key }); }
+        Variable& operator[](Value const& key) { return operator[](Values{ key }); }
 
-        std::optional<std::string> path_to(Expando const& lvalue, std::string const& base = "") const {
+        std::optional<std::string> path_to(Variable const& lvalue, std::string const& base = "") const {
             if (std::addressof(*this) == std::addressof(lvalue))
                 return base;
             for (size_t i = 0; i < _array.size(); ++i) {
@@ -147,7 +147,7 @@ namespace Eval {
         static std::string type_name(Value const& v) {
             return demangle(v.type().name());
         }
-        friend std::ostream& operator<<(std::ostream& os, Expando const& obj) {
+        friend std::ostream& operator<<(std::ostream& os, Variable const& obj) {
             obj.dump(os, false);
             return os;
         }
@@ -157,24 +157,24 @@ namespace Eval {
     // can be either an LValue or RValue
     struct WrapValue { Value _value; }; // to unconfuse boost::variant convert_construct
     using RValue = Value;
-    using LValue = Expando & ;
+    using LValue = Variable & ;
 
-    struct Dynamic : boost::variant<WrapValue, Expando*> {
-        using Variant = boost::variant<WrapValue, Expando*>;
+    struct Dynamic : boost::variant<WrapValue, Variable*> {
+        using Variant = boost::variant<WrapValue, Variable*>;
         Dynamic() = default;
         Dynamic(Value const& v) : Variant(WrapValue{ v }) {}
         Dynamic(LValue r) : Variant(&r) {}
         using Variant::operator=;
 
         LValue lvalue() const {
-            if (auto* p = boost::strict_get<Expando*>(&base()))
+            if (auto* p = boost::strict_get<Variable*>(&base()))
                 return **p;
             throw std::runtime_error("LValue required (" + boost::lexical_cast<std::string>(*this) + ")");
         }
         Value value() const {
             return which() == 0
                 ? boost::strict_get<WrapValue>(base())._value
-                : boost::strict_get<Expando*>(base())->_value;
+                : boost::strict_get<Variable*>(base())->_value;
         }
 
         operator LValue() const { return lvalue(); }
