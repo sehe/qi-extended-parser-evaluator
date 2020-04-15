@@ -7,15 +7,15 @@ namespace Ast {
         using Assoc = Associativity;
         using Op = Operator;
         auto bin = [](Precedence p, std::string_view tok, Op op) {
-            return OperatorDef{p, Arity::Binary, Assoc::LTR, tok, op};
+            return OperatorDef{p, Assoc::LTR, tok, op};
         };
 
         // levels after https://en.cppreference.com/book/operator_precedence
         static std::vector<OperatorDef> const s_table {
             // level 0 is unary ops
-            {0, Arity::Unary, Assoc::LTR, "+",   Op::Plus},
-            {0, Arity::Unary, Assoc::LTR, "-",   Op::Minus},
-            {0, Arity::Unary, Assoc::LTR, "not", Op::NOT},
+            {0, Assoc::LTR, "+",   Op::UnaryPlus},
+            {0, Assoc::LTR, "-",   Op::UnaryMinus},
+            {0, Assoc::LTR, "not", Op::NOT},
 
             // left-to-right binary ops follow
             bin(1, "*",   Op::Mult),
@@ -37,16 +37,16 @@ namespace Ast {
             bin(6, "xor", Op::XOR),
             bin(7, "or",  Op::OR),
             // Ternary belongs here, but doesn't fit the pattern
-            {8, Arity::Binary, Assoc::RTL, ":=",  Op::Assign},
+            {8, Assoc::RTL, ":=",  Op::Assign},
             // fake entry, for precedence only
-            {8, Arity::Binary, Assoc::RTL, "if/else",  Op::Conditional},
+            {8, Assoc::RTL, "if/else",  Op::Conditional},
         };
         return s_table;
     }
 
-    static OperatorDef const* by_op(Operator op, Arity arity) {
+    static OperatorDef const* by_op(Operator op) {
         for (auto& def : operators())
-            if (op == def.op && arity == def.arity)
+            if (op == def.op)
                 return &def;
         return nullptr;
     }
@@ -83,9 +83,9 @@ namespace Ast { // IO
             OperatorDef const* call(Member     const& )  const { return nullptr; }
             OperatorDef const* call(Call       const& )  const { return nullptr; }
             OperatorDef const* call(Subscript  const& )  const { return nullptr; }
-            OperatorDef const* call(Ternary    const& )  const { return by_op(Operator::Conditional, Arity::Binary); }
-            OperatorDef const* call(Binary const& e) const { return by_op(e.op, Arity::Binary); }
-            OperatorDef const* call(Unary const& e) const { return by_op(e.op, Arity::Unary); }
+            OperatorDef const* call(Ternary    const& )  const { return by_op(Operator::Conditional); }
+            OperatorDef const* call(Binary const& e) const { return by_op(e.op); }
+            OperatorDef const* call(Unary const& e) const { return by_op(e.op); }
         };
 
         static inline constexpr DefitionF get_def {};
@@ -99,8 +99,8 @@ namespace Ast { // IO
         return precedence(get_def(e));
     }
 
-    Precedence precedence(Operator op, Arity arity) {
-        return precedence(by_op(op, arity));
+    Precedence precedence(Operator op) {
+        return precedence(by_op(op));
     }
 
     Associativity associativity(OperatorDef const* def) {
@@ -111,8 +111,8 @@ namespace Ast { // IO
         return associativity(get_def(e));
     }
 
-    Associativity associativity(Operator op, Arity arity) {
-        return associativity(by_op(op, arity));
+    Associativity associativity(Operator op) {
+        return associativity(by_op(op));
     }
 
     // If our operands have higher precedence, add parentheses.
@@ -147,9 +147,7 @@ namespace Ast { // IO
             }
         }
 
-        if (auto* def = by_op(op, Arity::Binary))
-            return os << def->token;
-        if (auto* def = by_op(op, Arity::Unary))
+        if (auto* def = by_op(op))
             return os << def->token;
         return os << "?op?";
     }
@@ -171,7 +169,7 @@ namespace Ast { // IO
     }
     std::ostream& operator<<(std::ostream&os, Binary const&o) {
         Precedence level = precedence(o);
-        bool left_associative = (Associativity::LTR == associativity(o.op, Arity::Binary));
+        bool left_associative = (Associativity::LTR == associativity(o.op));
         relative(os, level, o.lhs, !left_associative);
         os << " " << o.op << " ";
         relative(os, level, o.rhs, left_associative);
@@ -179,7 +177,7 @@ namespace Ast { // IO
     }
     std::ostream& operator<<(std::ostream&os, Ternary const&o) {
         auto re = [&](Expression const& e) -> auto& {
-            return relative(os, by_op(Operator::Conditional, Arity::Binary)->level, e, true);
+            return relative(os, by_op(Operator::Conditional)->level, e, true);
         };
         if (Format::CxxCompat == IOFmt(os)) {
             re(o.cond) << "? ";

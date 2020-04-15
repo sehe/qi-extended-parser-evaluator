@@ -34,19 +34,18 @@ namespace Ast {
        boost::multiprecision::et_off>;
 
     enum class Operator {
+        UnaryPlus, UnaryMinus,
         Plus, Minus, Mult, Div, Mod,
         Less, LessEq, Greater, GreaterEq, Equal, NotEq,
         NOT, AND, OR, XOR,
-        Assign, Conditional
+        Assign, Conditional,
     };
 
     using Precedence = int;
-    enum class Arity { Unary, Binary };
     enum class Associativity { LTR, RTL };
 
     struct OperatorDef {
         Precedence level;
-        Arity arity;
         Associativity assoc;
         std::string_view token;
         Operator op;
@@ -75,9 +74,9 @@ namespace Ast {
     >::type;
 
     Precedence precedence(Expression const& e);
-    Precedence precedence(Operator op, Arity arity);
+    Precedence precedence(Operator op);
     Associativity associativity(Expression const& e);
-    Associativity associativity(Operator op, Arity arity);
+    Associativity associativity(Operator op);
 
     using Expressions = std::vector<Expression>;
 

@@ -61,8 +61,8 @@ namespace AstGen {
     static inline Gen operator&&(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::AND }}; }
     static inline Gen operator||(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::OR }}; }
 
-    static inline Gen operator+(Gen a) { return {Ast::Unary { Operator::Plus, a }}; }
-    static inline Gen operator-(Gen a) { return {Ast::Unary { Operator::Minus, a }}; }
+    static inline Gen operator+(Gen a) { return {Ast::Unary { Operator::UnaryPlus, a }}; }
+    static inline Gen operator-(Gen a) { return {Ast::Unary { Operator::UnaryMinus, a }}; }
     static inline Gen operator!(Gen a) { return {Ast::Unary { Operator::NOT, a }}; }
 
     struct ListGen {

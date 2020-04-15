@@ -43,8 +43,8 @@ namespace Parser {
             };
 
             Ast::Binary operator()(Ast::Expression const& lhs, Ast::Expression const& rhs, Ast::Operator op) const {
-                if (associativity(op, Ast::Arity::Binary) == Ast::Associativity::RTL && 
-                    precedence(op, Ast::Arity::Binary) == precedence(lhs)) 
+                if (associativity(op) == Ast::Associativity::RTL && 
+                    precedence(op) == precedence(lhs)) 
                 {
                     return boost::apply_visitor(FixRTL {op}, lhs, rhs);
                 }

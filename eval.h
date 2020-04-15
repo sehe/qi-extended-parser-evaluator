@@ -312,9 +312,12 @@ namespace Eval {
             RValue const rhs = call(o.rhs);
 
             switch (o.op) {
-              case Ast::Operator::Plus:  return rhs;
-              case Ast::Operator::Minus: return boost::apply_visitor(detail::Arithmetic<std::negate<>>{}, rhs);
-              case Ast::Operator::NOT:   return boost::apply_visitor(detail::Logical<std::logical_not<>>{}, rhs);
+              case Ast::Operator::UnaryPlus:
+                  return rhs;
+              case Ast::Operator::UnaryMinus:
+                  return boost::apply_visitor(detail::Arithmetic<std::negate<>>{}, rhs);
+              case Ast::Operator::NOT:
+                  return boost::apply_visitor(detail::Logical<std::logical_not<>>{}, rhs);
               default:
                   throw std::runtime_error("Not implemented");
             }
