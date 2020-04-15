@@ -287,7 +287,7 @@ namespace Eval {
         }
 
         boost::signals2::signal<void(LValue variable)> on_access;
-        boost::signals2::signal<void(Ast::Call const& call, RValue value)> on_invoke;
+        boost::signals2::signal<void(Ast::Call const& call, Values const& params, RValue value)> on_invoke;
         boost::signals2::signal<void(LValue dest, RValue value)> on_assign;
 
     private:
@@ -380,7 +380,7 @@ namespace Eval {
             LValue fun = call(o.fun);
             if (auto* f = boost::get<Function>(&fun._value)) {
                 RValue r = (*f)(params);
-                on_invoke(o, r);
+                on_invoke(o, params, r);
                 return r;
             }
             throw std::runtime_error("Invalid callable");

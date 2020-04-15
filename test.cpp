@@ -28,18 +28,7 @@ static inline void run_generated_ast_checks(size_t& good, size_t& bad) {
 }
 
 static inline Eval::Value demofunction(Eval::Values const& params) {
-#if 1   
-    std::ostringstream oss;
-    oss << "demofunction returned: c(";
-    bool first = true;
-    for (auto& param : params)
-        oss << (std::exchange(first, false) ? "" : ", ") << param;
-    oss << ")";
-    return oss.str();
-#else
-    boost::ignore_unused(params);
-    return Ast::Number(23.45);
-#endif
+    return Ast::Number(params.size()*23.45);
 }
 
 static inline auto make_context() {
@@ -76,8 +65,12 @@ void check_eval(Eval::Variable context, std::vector<std::string> const& inputs) 
         evaluator.on_assign.connect([&context](Eval::LValue dest, Eval::RValue value) {
             std::cout << "Assigning " << value << " to " << context.path_to(dest).value_or("?") << "\n";
         });
-        evaluator.on_invoke.connect([](Ast::Call const& call, Eval::RValue retval) {
-            std::cout << "Invoking: " << call << " -> " << retval << "\n";
+        evaluator.on_invoke.connect([](Ast::Call const& call, Eval::Values const& params, Eval::RValue retval) {
+            std::cout << "Invoking: " << call << " actual (";
+            bool first = true;
+            for (auto& param : params)
+                std::cout << (std::exchange(first, false) ? "" : ", ") << param;
+            std::cout << ") -> " << retval << "\n";
         });
     }
 
