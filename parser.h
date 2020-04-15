@@ -43,8 +43,10 @@ namespace Parser {
             };
 
             Ast::Binary operator()(Ast::Expression const& lhs, Ast::Expression const& rhs, Ast::Operator op) const {
-                if (associativity(op) == Ast::Associativity::RTL && 
-                    precedence(op) == precedence(lhs)) 
+                auto& opdef = operator_def(op);
+
+                if (opdef.right_to_left_associative() && 
+                    opdef.precedence == operator_def(lhs).precedence) 
                 {
                     return boost::apply_visitor(FixRTL {op}, lhs, rhs);
                 }
@@ -60,7 +62,7 @@ namespace Parser {
             quoted_string = '"' >> *(R"("")" >> qi::attr('"') | ~qi::char_('"')) >> '"';
 
             for (auto& def : Ast::operators())
-                _ops[def.level].add(def.token, def.op);
+                _ops[def.precedence].add(def.token, def.op);
 
             using namespace boost::spirit::labels;
             unary_ = (qi::no_case[_ops[0]] >> simple_)[_val = make_unary(_1, _2)];

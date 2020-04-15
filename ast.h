@@ -39,16 +39,18 @@ namespace Ast {
         Less, LessEq, Greater, GreaterEq, Equal, NotEq,
         NOT, AND, OR, XOR,
         Assign, Conditional,
+        NONE // artificial entry to represent non-operation nodes
     };
 
     using Precedence = int;
-    enum class Associativity { LTR, RTL };
 
     struct OperatorDef {
-        Precedence level;
-        Associativity assoc;
+        Precedence precedence;
         std::string_view token;
         Operator op;
+
+        bool right_to_left_associative() const { return precedence == 8;      } 
+        explicit operator bool() const         { return op != Operator::NONE; } 
     };
     std::vector<OperatorDef> const& operators();
 
@@ -73,10 +75,8 @@ namespace Ast {
         boost::recursive_variant_
     >::type;
 
-    Precedence precedence(Expression const& e);
-    Precedence precedence(Operator op);
-    Associativity associativity(Expression const& e);
-    Associativity associativity(Operator op);
+    OperatorDef const& operator_def(Operator op);
+    OperatorDef const& operator_def(Expression const& e);
 
     using Expressions = std::vector<Expression>;
 

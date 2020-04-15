@@ -4,51 +4,48 @@
 namespace Ast {
     // Operator definitions / metadata
     std::vector<OperatorDef> const& operators() {
-        using Assoc = Associativity;
         using Op = Operator;
-        auto bin = [](Precedence p, std::string_view tok, Op op) {
-            return OperatorDef{p, Assoc::LTR, tok, op};
-        };
 
         // levels after https://en.cppreference.com/book/operator_precedence
         static std::vector<OperatorDef> const s_table {
             // level 0 is unary ops
-            {0, Assoc::LTR, "+",   Op::UnaryPlus},
-            {0, Assoc::LTR, "-",   Op::UnaryMinus},
-            {0, Assoc::LTR, "not", Op::NOT},
+            {0, "+",   Op::UnaryPlus},
+            {0, "-",   Op::UnaryMinus},
+            {0, "not", Op::NOT},
 
             // left-to-right binary ops follow
-            bin(1, "*",   Op::Mult),
-            bin(1, "/",   Op::Div),
-            bin(1, "%",   Op::Mod),
+            {1, "*",   Op::Mult},
+            {1, "/",   Op::Div},
+            {1, "%",   Op::Mod},
 
-            bin(2, "+",   Op::Plus),
-            bin(2, "-",   Op::Minus),
+            {2, "+",   Op::Plus},
+            {2, "-",   Op::Minus},
 
-            bin(3, "<",   Op::Less),
-            bin(3, "<=",  Op::LessEq),
-            bin(3, ">",   Op::Greater),
-            bin(3, ">=",  Op::GreaterEq),
+            {3, "<",   Op::Less},
+            {3, "<=",  Op::LessEq},
+            {3, ">",   Op::Greater},
+            {3, ">=",  Op::GreaterEq},
 
-            bin(4, "=",   Op::Equal),
-            bin(4, "<>",  Op::NotEq),
+            {4, "=",   Op::Equal},
+            {4, "<>",  Op::NotEq},
 
-            bin(5, "and", Op::AND),
-            bin(6, "xor", Op::XOR),
-            bin(7, "or",  Op::OR),
+            {5, "and", Op::AND},
+            {6, "xor", Op::XOR},
+            {7, "or",  Op::OR},
             // Ternary belongs here, but doesn't fit the pattern
-            {8, Assoc::RTL, ":=",  Op::Assign},
+            {8, ":=",  Op::Assign},
             // fake entry, for precedence only
-            {8, Assoc::RTL, "if/else",  Op::Conditional},
+            {8, "if/else",  Op::Conditional},
+            {0, "?", Op::NONE}
         };
         return s_table;
     }
 
-    static OperatorDef const* by_op(Operator op) {
+    static OperatorDef const& lookup(Operator op) {
         for (auto& def : operators())
             if (op == def.op)
-                return &def;
-        return nullptr;
+                return def;
+        throw std::logic_error("Undefined operator");
     }
 
 }
@@ -70,49 +67,35 @@ namespace Ast { // IO
 
     namespace {
         struct DefitionF {
-            using result_type = OperatorDef const*;
+            using result_type = OperatorDef const&;
 
-            template <typename... T> OperatorDef const* operator()(T const&... args) const { return call(args...); }
+            OperatorDef const& none_ = lookup(Operator::NONE);
+
+            template <typename... T> OperatorDef const& operator()(T const&... args) const { return call(args...); }
 
           private:
-            OperatorDef const* call(Expression const& e) const { return boost::apply_visitor(*this, e); }
-            OperatorDef const* call(Boolean    const& )  const { return nullptr; }
-            OperatorDef const* call(Number     const& )  const { return nullptr; }
-            OperatorDef const* call(String     const& )  const { return nullptr; }
-            OperatorDef const* call(Identifier const& )  const { return nullptr; }
-            OperatorDef const* call(Member     const& )  const { return nullptr; }
-            OperatorDef const* call(Call       const& )  const { return nullptr; }
-            OperatorDef const* call(Subscript  const& )  const { return nullptr; }
-            OperatorDef const* call(Ternary    const& )  const { return by_op(Operator::Conditional); }
-            OperatorDef const* call(Binary const& e) const { return by_op(e.op); }
-            OperatorDef const* call(Unary const& e) const { return by_op(e.op); }
+            OperatorDef const& call(Expression const& e) const { return boost::apply_visitor(*this, e); }
+            OperatorDef const& call(Boolean    const& )  const { return none_; }
+            OperatorDef const& call(Number     const& )  const { return none_; }
+            OperatorDef const& call(String     const& )  const { return none_; }
+            OperatorDef const& call(Identifier const& )  const { return none_; }
+            OperatorDef const& call(Member     const& )  const { return none_; }
+            OperatorDef const& call(Call       const& )  const { return none_; }
+            OperatorDef const& call(Subscript  const& )  const { return none_; }
+            OperatorDef const& call(Ternary    const& )  const { return lookup(Operator::Conditional); }
+            OperatorDef const& call(Binary const& e) const { return lookup(e.op); }
+            OperatorDef const& call(Unary const& e) const { return lookup(e.op); }
         };
 
-        static inline constexpr DefitionF get_def {};
+        static inline const DefitionF get_def {};
     }
 
-    Precedence precedence(OperatorDef const* def) {
-        return def? def->level : 0;
+    OperatorDef const& operator_def(Operator op) {
+        return lookup(op);;
     }
 
-    Precedence precedence(Expression const& e) {
-        return precedence(get_def(e));
-    }
-
-    Precedence precedence(Operator op) {
-        return precedence(by_op(op));
-    }
-
-    Associativity associativity(OperatorDef const* def) {
-        return def? def->assoc : Associativity::LTR;
-    }
-
-    Associativity associativity(Expression const& e) {
-        return associativity(get_def(e));
-    }
-
-    Associativity associativity(Operator op) {
-        return associativity(by_op(op));
+    OperatorDef const& operator_def(Expression const& e) {
+        return get_def(e);
     }
 
     // If our operands have higher precedence, add parentheses.
@@ -120,7 +103,7 @@ namespace Ast { // IO
     // In the case of equal precedence, we base it on the associativy of the
     // surrounding expression
     static inline std::ostream& relative(std::ostream& os, Precedence to, Expression const& oper, bool override_associativity = false) {
-        auto level = precedence(oper);
+        auto level = operator_def(oper).precedence;
         if (to < level || (to == level && override_associativity))
             return os << "(" << oper << ")";
         return os << oper;
@@ -147,8 +130,8 @@ namespace Ast { // IO
             }
         }
 
-        if (auto* def = by_op(op))
-            return os << def->token;
+        if (auto& def = lookup(op))
+            return os << def.token;
         return os << "?op?";
     }
 
@@ -165,19 +148,20 @@ namespace Ast { // IO
         return os << o.obj << "." << o.member;
     }
     std::ostream& operator<<(std::ostream&os, Unary const&o) {
-        return relative(os << o.op << " ", precedence(o), o.rhs);
+        return relative(os << o.op << " ", get_def(o).precedence, o.rhs);
     }
     std::ostream& operator<<(std::ostream&os, Binary const&o) {
-        Precedence level = precedence(o);
-        bool left_associative = (Associativity::LTR == associativity(o.op));
-        relative(os, level, o.lhs, !left_associative);
+        auto& def = operator_def(o);
+
+        relative(os, def.precedence, o.lhs, def.right_to_left_associative());
         os << " " << o.op << " ";
-        relative(os, level, o.rhs, left_associative);
+        relative(os, def.precedence, o.rhs, !def.right_to_left_associative());
         return os;
     }
     std::ostream& operator<<(std::ostream&os, Ternary const&o) {
         auto re = [&](Expression const& e) -> auto& {
-            return relative(os, by_op(Operator::Conditional)->level, e, true);
+            static const auto precedence = lookup(Operator::Conditional).precedence;
+            return relative(os, precedence, e, true);
         };
         if (Format::CxxCompat == IOFmt(os)) {
             re(o.cond) << "? ";
