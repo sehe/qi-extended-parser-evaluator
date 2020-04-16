@@ -23,17 +23,32 @@ namespace Eval {
     >;
 
     static inline bool operator==(Function const& f, Function const& g) {
-        return (!f) && (!g); // only match if both uninitialized
+        return !f && !g; // only match if both uninitialized
     }
     static inline bool operator!=(Function const& f, Function const& g) {
-        return !(f || !g); // only match if both uninitialized
+        return f || g; // only match if both uninitialized
     }
 
     struct Value : ValueV {
         using ValueV::ValueV;
         using ValueV::operator=;
-        bool operator==(const Value& o) const { return static_cast<bool>(ValueV::operator==(static_cast<ValueV const&>(o))); }
-        bool operator!=(const Value& o) const { return static_cast<bool>(ValueV::operator!=(static_cast<ValueV const&>(o))); }
+        Value operator==(const Value& o) const {
+            if (!(which() && o.which())) return Null{};
+            return boost::apply_visitor(_eq, *this, o);
+        }
+        Value operator!=(const Value& o) const {
+            if (!(which() && o.which())) return Null{};
+            return !boost::apply_visitor(_eq, *this, o);
+        }
+
+      private:
+        struct EqualToVis {
+            using result_type = bool;
+            template <typename T> bool operator()(T const& v, T const& u) const { return v == u; }
+            template <typename T, typename U> bool operator()(T const&, U const&) const { return false; }
+            // will be overruled, but required to satisfy visitor typing rules
+            bool operator()(Null const&, Null const&) const { return false; }
+        } static constexpr _eq {};
     };
 
     static inline std::ostream& operator<<(std::ostream& os, Function const&) {
