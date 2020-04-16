@@ -22,7 +22,7 @@ static auto str = boost::cnv::apply<std::string, Ast::Expression>(boost::cnv::le
 
 static inline void run_generated_ast_checks(size_t& good, size_t& bad) {
     boost::ignore_unused(good, bad);
-    BOOST_PP_SEQ_FOR_EACH(INVOKE_CHECK_FUN, _, UNITS)
+    //BOOST_PP_SEQ_FOR_EACH(INVOKE_CHECK_FUN, _, UNITS)
 }
 
 static inline Eval::Value demofunction(Eval::Values const& params) {

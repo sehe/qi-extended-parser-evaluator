@@ -15,11 +15,11 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pthread -march=native")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-var-tracking-assignments")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
+#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -fno-omit-frame-pointer -O0 -pthread -march=native")
 
 FILE(GLOB CHECK_AST_CPPS check_ast_??.cpp)
 ADD_EXECUTABLE(test.exe test.cpp ast.cpp ast_gen.cpp parser.cpp
-    ${CHECK_AST_CPPS}
+    #${CHECK_AST_CPPS}
 )
