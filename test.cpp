@@ -12,11 +12,9 @@ static auto str = boost::cnv::apply<std::string, Ast::Expression>(boost::cnv::le
 #include <boost/preprocessor/seq/for_each.hpp>
 
 #define UNITS \
-    (aa)(ab)(ac)(ad)(ae)(af)(ag)(ah)(ai)(aj)(ak)(al)(am)(an)(ao)(ap) \
-    (aq)(ar)(as)(at)(au)(av)(aw)(ax)(ay)(az)(ba)(bb)(bc)(bd)(be)(bf) \
-    (bg)(bh)(bi)(bj)(bk)(bl)(bm)(bn)(bo)(bp)(bq)(br)(bs)(bt)(bu)(bv) \
-    (bw)(bx)(by)(bz)(ca)(cb)(cc)(cd)(ce)(cf)(cg)(ch)(ci)(cj)(ck)(cl) \
-    (cm)(cn)
+    (aa)(ab)(ac)(ad)(ae)(af)(ag)(ah)(ai)(aj)(ak)(al)(am)(an)(ao)(ap)(aq)(ar)(as)(at)(au)(av)(aw)(ax)(ay)(az) \
+    (ba)(bb)(bc)(bd)(be)(bf)(bg)(bh)(bi)(bj)(bk)(bl)(bm)(bn)(bo)(bp)(bq)(br)(bs)(bt)(bu)(bv)(bw)(bx)(by)(bz) \
+    (ca)(cb)(cc)(cd)(ce)(cf)(cg)(ch)(ci)(cj)(ck)(cl)(cm)(cn)(co)(cp)(cq)(cr)(cs)(ct)(cu)(cv)(cw)(cx)
 
 #define INVOKE_CHECK_FUN(r, data, elem)  \
     void BOOST_PP_CAT(check_ast_, elem)(size_t& good, size_t& bad); \
@@ -45,14 +43,6 @@ static inline auto make_context() {
     ctx["d"]["a"]["c"] = Value(1);
 
     return ctx;
-}
-
-static inline void foo() {
-    Ast::Number b;
-    Eval::Null a;
-    void(a < b);
-    void(a == b);
-    void(a != b);
 }
 
 static bool eval_trace = false;
@@ -159,9 +149,7 @@ void run_eval_tests()
         // Invoking a function doesn't yield an LValue
         R"(a.d[3].c(34) := a.b[2])",
         R"(a.d[2].c(a.e*3,20,"hello") := b.c.d*20)",
-        // NOTE: replaces a.d entirely!
         R"(a := 10)",
-        // Now, this will not invoke a.d[2].c anymore:
         R"(a.d[2].c(a.e*3,20,"hello") := b.c.d*20)",
         R"(a.d := a.b)",
         R"(a.d[3] := 10)",
@@ -385,7 +373,7 @@ void generate_cases() {
     token unops[] = { "", " +", " -", " not ", };
     token binops[] = {
         "*", "/", "%", "+", "-",
-        "<", "<=", ">", ">=", {"=", "=="}, {"<>", "!="}, // TODO {":=", "="}
+        "<", "<=", ">", ">=", {"=", "=="}, {"<>", "!="}, {":=", "="},
         // bitwise for consistent c++ precedence:
         {" and ", "&"}, {" xor ", "^"}, {" or ", "|"},
     };
