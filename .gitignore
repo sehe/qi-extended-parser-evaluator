@@ -1,4 +1,5 @@
 .*.sw?
+tags
 test.exe
 output.txt
 Makefile
