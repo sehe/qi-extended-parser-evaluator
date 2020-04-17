@@ -155,5 +155,5 @@ namespace Parser {
     };
 
     Ast::Expression parse_expression(std::string const& text);
-    bool check_ast(std::string const& txt, Ast::Expression expected);
+    bool check_ast(std::string const& txt, Ast::Expression const& expected);
 }
