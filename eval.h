@@ -2,7 +2,6 @@
 #include "ast.h"
 #include "null.h"
 #include <boost/variant.hpp>
-#include <boost/signals2.hpp>
 #include <vector>
 #include <optional>
 #include <iomanip>
@@ -301,14 +300,14 @@ namespace Eval {
             return call(std::forward<T>(args)...);
         }
 
-        boost::signals2::signal<void(LValue variable)> on_access;
-        boost::signals2::signal<void(Ast::Call const& call, Values const& params, RValue value)> on_invoke;
-        boost::signals2::signal<void(LValue dest, RValue value)> on_assign;
+        std::function<void(LValue variable)> on_access;
+        std::function<void(Ast::Call const& call, Values const& params, RValue value)> on_invoke;
+        std::function<void(LValue dest, RValue value)> on_assign;
 
     private:
         Dynamic access(LValue ctx, Ast::Identifier const& id) {
             LValue var = ctx[id];
-            on_access(var);
+            if (on_access) on_access(var);
             return var;
         }
 
@@ -375,7 +374,7 @@ namespace Eval {
                 case Ast::Operator::Assign: {
                     LValue dest = lhs;
 
-                    on_assign(dest, rhs);
+                    if (on_assign) on_assign(dest, rhs);
                     dest._value = rhs; // Or: Replacing the entire obj/arr: dest = rhs.lvalue();
 
                     return dest;
@@ -398,7 +397,7 @@ namespace Eval {
             LValue fun = call(o.fun);
             if (auto* f = boost::get<Function>(&fun._value)) {
                 RValue r = (*f)(params);
-                on_invoke(o, params, r);
+                if (on_invoke) on_invoke(o, params, r);
                 return r;
             }
             throw std::runtime_error("Invalid callable");

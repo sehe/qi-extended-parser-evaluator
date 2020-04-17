@@ -51,61 +51,68 @@ void check_eval(Eval::Variable context, std::vector<std::string> const& inputs) 
     Parser::Expression<std::string::const_iterator> const g;
     Eval::Evaluator evaluator{ context };
 
+    std::vector<std::pair<std::string, std::string> > accesses;
+    auto strcast = [](auto const& v) { return boost::lexical_cast<std::string>(v); };
+
     if (eval_trace) {
-        evaluator.on_assign.connect([&context](Eval::LValue dest, Eval::RValue value) {
-            std::cout << "Assigning " << value << " to " << context.path_to(dest).value_or("?") << "\n";
-        });
-        evaluator.on_invoke.connect([](Ast::Call const& call, Eval::Values const& params, Eval::RValue retval) {
+        evaluator.on_assign = [&context](Eval::LValue dest, Eval::RValue value) {
+            std::cout
+                << "Assigning " << value
+                << " to " << context.path_to(dest).value_or("?")
+                << " (previously " << dest << ")"
+                << "\n";
+        };
+        evaluator.on_invoke = [](Ast::Call const& call, Eval::Values const& params, Eval::RValue retval) {
             std::cout << "Invoking: " << call << " actual (";
             bool first = true;
             for (auto& param : params)
                 std::cout << (std::exchange(first, false) ? "" : ", ") << param;
             std::cout << ") -> " << retval << "\n";
-        });
+        };
+
+        evaluator.on_access = [&](Eval::LValue var) {
+            if (!eval_trace)
+                return;
+            auto path = context.path_to(var).value_or("?");
+            if (!accesses.empty() && 0 == path.find(accesses.back().first)) // condense sub-object accesses
+                accesses.back() = {path, strcast(var)};
+            else
+                accesses.emplace_back(path, strcast(var));
+        };
     }
 
     for (std::string const str : inputs) {
-        std::vector<std::pair<std::string, std::string> > accesses;
-
-        boost::signals2::scoped_connection on_access =
-            evaluator.on_access.connect([&context,&accesses](Eval::LValue var) {
-                if (!eval_trace)
-                    return;
-                auto path = context.path_to(var).value_or("?");
-                if (!accesses.empty() && 0 == path.find(accesses.back().first)) // condense sub-object accesses
-                    accesses.back() = {path,boost::lexical_cast<std::string>(var)};
-                else
-                    accesses.emplace_back(path, boost::lexical_cast<std::string>(var));
-            });
-
-        auto iter = str.begin(), end = str.end();
-
         std::cout << std::quoted(str) << " ";
-        Ast::Expression parsed;
-        if (phrase_parse(
-            iter, end, g >> qi::eoi,
-            qi::space, // to allow trailing whitespace
-            parsed))
-        {
-            std::cout << "OK: " << parsed << "\n";
+
+        try {
+            auto expr = Parser::parsed(str);
+            std::cout << "OK: " << expr << "\n";
 
             try {
-                Eval::Value outcome = evaluator(parsed);
+                accesses.clear();
+                Eval::Value outcome = evaluator(expr);
                 std::cout << "Outcome: " << outcome << "\n"; // , context: " << context << std::endl;
             }
             catch (std::exception const& e) {
                 std::cout << "Failed: " << e.what() << "\n";
             }
-            for (auto& [var,val] : accesses)
-                std::cout << "Accessed: " << var << " -> " << val << "\n";
+            for (auto& [var,val] : accesses) {
+                std::cout << "Accessed: " << var << " -> " << val;
+
+                auto currentval = evaluator(Parser::parsed(var));
+                bool changed = strcast(currentval) != val;
+
+                if (changed) {
+                    std::cout << " (changed to " << currentval << ")\n";
+                } else {
+                    std::cout << ")\n";
+                }
+            }
 
             std::cout << "----------------------\n";
         }
-        else {
-            std::cout << "Failed\n";
-        }
-        if (iter != end) {
-            std::cout << "Remaining unparsed: " << std::quoted(std::string(iter, end)) << "\n";
+        catch(std::exception const& e) {
+            std::cout << "Failed (" << e.what() << ")\n";
         }
     }
 }
