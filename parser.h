@@ -25,8 +25,8 @@ namespace Parser {
         };
 
         /*
-         * Due to the way the term_(n) rule is designed, we know that both
-         * rhs/lhs have lower precedence than the binding operator.
+         * Instead of fracturing the precedence levels throughout the parser,
+         * we compose binary operators in "Shunting-Yard" style.
          *
          * We also know that the default ast is left-associative due to the
          * PEG production.
@@ -35,26 +35,16 @@ namespace Parser {
          * need to transform the AST to reflect that.
          */
         template<> struct make_<Ast::Binary> {
-            struct FixRTL { // binary visitor assuming equal precedence
-                Ast::Operator op;
-
-                template <typename E>
-                Ast::Binary operator()(Ast::Binary const& lb, E const& rhs) const {
-                    // (lb.lhs ? lb.rhs) [op] rhs --> lb.lhs ? (lb.rhs [op] rhs)
-                    return { lb.lhs, Ast::Binary { lb.rhs, rhs, op }, lb.op };
-                }
-
-                template <typename... E>
-                Ast::Binary operator()(E const&... oper) const { return { oper..., op }; }
-            };
-
             Ast::Binary operator()(Ast::Expression const& lhs, Ast::Expression const& rhs, Ast::OperatorDef const* opdef) const {
-                auto& lhopdef = operator_def(lhs);
-                bool shuffle = opdef->precedence < lhopdef.precedence 
-                    || (opdef->right_to_left_associative() && opdef->precedence == lhopdef.precedence);
+                if (auto* lhs_binary = boost::get<Ast::Binary>(&lhs)) {
+                    auto& lhopdef = operator_def(lhs_binary->op);
+                    bool shuffle = opdef->precedence < lhopdef.precedence 
+                        || (opdef->right_to_left_associative() && opdef->precedence == lhopdef.precedence);
 
-                if (shuffle) {
-                    return boost::apply_visitor(FixRTL {opdef->op}, lhs, rhs);
+                    if (shuffle) {
+                        // (L.lhs ? L.rhs) [op] rhs --> L.lhs ? (L.rhs [op] rhs)
+                        return { lhs_binary->lhs, Ast::Binary { lhs_binary->rhs, rhs, opdef->op }, lhs_binary->op };
+                    }
                 }
                 return { lhs, rhs, opdef->op };
             }
