@@ -1,15 +1,16 @@
 #include "parser.h"
-
 namespace Parser {
-    Ast::Expression parsed(std::string const& text) {
+    static Parser::Expression<std::string::const_iterator> const s_parser {};
+
+    Ast::Expression parse_expression(std::string const& text) {
         Ast::Expression expr;
-        if (!phrase_parse(
-                text.begin(), text.end(),
-                Parser::Expression<std::string::const_iterator>() >> qi::eoi,
-                qi::space, // to allow trailing whitespace
-                expr))
-        {
-            throw std::runtime_error("illegal expression");
+
+        auto f = text.begin(), l = text.end();
+        if (!qi::parse(f, l, s_parser >> *qi::space, expr)) { // to allow trailing whitespace
+            throw InvalidExpression();
+        }
+        if (f != l) {
+            throw RemainingUnparsed(std::string(f, l));
         }
         return expr;
     }
@@ -17,7 +18,7 @@ namespace Parser {
     bool check_ast(std::string const& txt, Ast::Expression expected) {
         Ast::Simplify clean;
         expected = clean(expected);
-        auto const actual = clean(parsed(txt));
+        auto const actual = clean(parse_expression(txt));
         bool ok = (expected == actual);
         if (ok)
         {

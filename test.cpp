@@ -85,7 +85,8 @@ void check_eval(Eval::Variable context, std::vector<std::string> const& inputs) 
         std::cout << std::quoted(str) << " ";
 
         try {
-            auto expr = Parser::parsed(str);
+            using Parser::parse_expression;
+            auto expr = parse_expression(str);
             std::cout << "OK: " << expr << "\n";
 
             try {
@@ -99,7 +100,7 @@ void check_eval(Eval::Variable context, std::vector<std::string> const& inputs) 
             for (auto& [var,val] : accesses) {
                 std::cout << "Accessed: " << var << " -> " << val;
 
-                auto currentval = evaluator(Parser::parsed(var));
+                auto currentval = evaluator(parse_expression(var));
                 bool changed = strcast(currentval) != val;
 
                 if (changed) {
@@ -111,8 +112,11 @@ void check_eval(Eval::Variable context, std::vector<std::string> const& inputs) 
 
             std::cout << "----------------------\n";
         }
-        catch(std::exception const& e) {
-            std::cout << "Failed (" << e.what() << ")\n";
+        catch(Parser::RemainingUnparsed const& rue) {
+            std::cout << "Remaining unparsed: " << std::quoted(rue.trailing) << "\n";
+        }
+        catch(std::exception const& pe) {
+            std::cout << "Failed (" << pe.what() << ")\n";
         }
     }
 }
@@ -306,8 +310,9 @@ int main(int argc, char const** argv) {
         run_generated_ast_checks(good, bad);
 
         using Parser::check_ast;
+        using Parser::parse_expression;
         ++(check_ast("x if y else z",                  (Ast::Ternary { x, y, z }))?good:bad);
-        ++(check_ast("x if y else y if z else x",      (Ast::Ternary { x, y, Parser::parsed("y if z else x") }))?good:bad);
+        ++(check_ast("x if y else y if z else x",      (Ast::Ternary { x, y, parse_expression("y if z else x") }))?good:bad);
         ++(check_ast("x or y if y and z else z xor x", (Ast::Ternary { x or y, y and z, z xor x }))?good:bad);
         ++(check_ast("x if y and z if x else z else z xor x if y else z or x", ( 
              Ast::Ternary { x, Ast::Ternary { y and z, x, z}, Ast::Ternary { z xor x, y, z or x } }))?good:bad);

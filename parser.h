@@ -150,6 +150,20 @@ namespace Parser {
         qi::rule<It, Ast::String()>     quoted_string;
     };
 
-    Ast::Expression parsed(std::string const& text);
+    struct ParseError : std::runtime_error {
+        using std::runtime_error::runtime_error;
+    };
+    struct InvalidExpression : ParseError {
+        InvalidExpression() : ParseError("InvalidExpression") {}
+    };
+    struct RemainingUnparsed : ParseError {
+        std::string const trailing;
+
+        RemainingUnparsed(std::string trailing)
+            : ParseError("RemainingUnparsed: " + trailing), trailing(std::move(trailing))
+        {}
+    };
+
+    Ast::Expression parse_expression(std::string const& text);
     bool check_ast(std::string const& txt, Ast::Expression expected);
 }
