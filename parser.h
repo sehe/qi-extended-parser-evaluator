@@ -18,6 +18,12 @@ namespace Parser {
             }
         };
 
+        template<> struct make_<Ast::Unary> {
+            Ast::Unary operator()(Ast::OperatorDef const* opdef, Ast::Expression const& operand) const {
+                return { opdef->op, operand };
+            }
+        };
+
         /*
          * Due to the way the term_(n) rule is designed, we know that both
          * rhs/lhs have lower precedence than the binding operator.
@@ -42,15 +48,15 @@ namespace Parser {
                 Ast::Binary operator()(E const&... oper) const { return { oper..., op }; }
             };
 
-            Ast::Binary operator()(Ast::Expression const& lhs, Ast::Expression const& rhs, Ast::Operator op) const {
-                auto& opdef = operator_def(op);
+            Ast::Binary operator()(Ast::Expression const& lhs, Ast::Expression const& rhs, Ast::OperatorDef const* opdef) const {
+                auto& lhopdef = operator_def(lhs);
+                bool shuffle = opdef->precedence < lhopdef.precedence 
+                    || (opdef->right_to_left_associative() && opdef->precedence == lhopdef.precedence);
 
-                if (opdef.right_to_left_associative() && 
-                    opdef.precedence == operator_def(lhs).precedence) 
-                {
-                    return boost::apply_visitor(FixRTL {op}, lhs, rhs);
+                if (shuffle) {
+                    return boost::apply_visitor(FixRTL {opdef->op}, lhs, rhs);
                 }
-                return { lhs, rhs, op };
+                return { lhs, rhs, opdef->op };
             }
         };
     }
@@ -61,11 +67,20 @@ namespace Parser {
             identifier_ = qi::char_("a-zA-Z_") >> *qi::char_("a-zA-Z0-9_");
             quoted_string = '"' >> *(R"("")" >> qi::attr('"') | ~qi::char_('"')) >> '"';
 
-            for (auto& def : Ast::operators())
-                _ops[def.precedence].add(def.token, def.op);
+            for (auto& def : Ast::operators()) {
+                if (def.op == Ast::Operator::NONE)
+                    continue;
+                [&]() -> Ops& {
+                    switch(def.precedence) {
+                        case 0:  return _unops; // these happen to be unaries
+                        case 8:  return _rtlops; // these are special-cased (ternary and assignment)
+                        default: return _binops;
+                    }
+                }().add(def.token, &def);
+            }
 
             using namespace boost::spirit::labels;
-            unary_ = (qi::no_case[_ops[0]] >> simple_)[_val = make_unary(_1, _2)];
+            unary_ = (qi::no_case[_unops] >> simple_)[_val = make_unary(_1, _2)];
 
             simple_
                 = ('(' >> expression_ >> ')'
@@ -81,21 +96,16 @@ namespace Parser {
                   | ('[' >> list_ >> ']')[_val = make_subscript(_val, _1)]
                 );
 
-            qi::_r1_type precedence_;
             term_
-                = qi::eps(precedence_ > 0)
-                  >> term_(precedence_ - 1) [_val = _1]
-                  >> *( (qi::no_case[qi::lazy(px::ref(_ops)[precedence_])] >> term_(precedence_ - 1))
-                            [_val = make_binary(_val, _2, _1)]
-                      )
-                | simple_ [_val = _1]
-                ;
+                = simple_ [_val = _1] >> *(
+                   (qi::no_case[_binops] >> simple_) [_val = make_binary(_val, _2, _1)]
+                );
 
             expression_
-                = term_(7) [_val = _1]
+                = term_ [_val = _1]
                 >> *(
                     ("if" >> expression_ >> "else" >> expression_) [_val = make_ternary(_val, _1, _2)]
-                  | (qi::no_case[_ops[8]] >> term_(7)) [_val = make_binary(_val, _2, _1)]
+                  | (qi::no_case[_rtlops] >> term_) [_val = make_binary(_val, _2, _1)]
                 );
 
             list_ = -(expression_ % ',');
@@ -116,8 +126,8 @@ namespace Parser {
         px::function<make_<Ast::Call>      > make_call{};
         px::function<make_<Ast::Subscript> > make_subscript{};
 
-        using Ops = qi::symbols<char, Ast::Operator>;
-        std::map<int, Ops> _ops;
+        using Ops = qi::symbols<char, Ast::OperatorDef const*>;
+        Ops _unops, _binops, _rtlops;
 
         struct bool_sym : qi::symbols<char, Ast::Boolean> {
             bool_sym() {
@@ -129,10 +139,10 @@ namespace Parser {
         } bool_;
 
         qi::rule<It, Ast::Expression()> start;
-        qi::rule<It, Ast::Expression(),    qi::blank_type> expression_, simple_;
-        qi::rule<It, Ast::Expression(int), qi::blank_type> term_;
-        qi::rule<It, Ast::Expressions(),   qi::blank_type> list_;
-        qi::rule<It, Ast::Unary(),         qi::blank_type> unary_;
+        qi::rule<It, Ast::Expression(),  qi::blank_type> expression_, simple_;
+        qi::rule<It, Ast::Expression(),  qi::blank_type> term_;
+        qi::rule<It, Ast::Expressions(), qi::blank_type> list_;
+        qi::rule<It, Ast::Unary(),       qi::blank_type> unary_;
 
         // implicit lexemes
         qi::real_parser<Ast::Number>    number_;
