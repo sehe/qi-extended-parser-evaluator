@@ -17,7 +17,8 @@ namespace Parser {
     }
 
     bool check_ast(std::string const& txt, Ast::Expression const& expected) {
-        auto const actual = s_clean(parse_expression(txt));
+        auto actual = parse_expression(txt);
+        s_clean(actual);
         bool ok = (expected == actual);
         if (ok) {
             //std::cout << txt << " -> " << Ast::MyLang    << actual << " PASSED\n";

@@ -144,30 +144,37 @@ namespace Ast {
     std::ostream& operator<<(std::ostream& os, Subscript const&o);
 
     struct Simplify {
-        using result_type = Expression;
+        using result_type = void;
 
-        template <typename T> Expression operator()(T const& v) const {
+        template <typename T> void operator()(T& v) const {
             return call(v);
         }
 
       private:
-        auto call(Boolean    const& v) const { return v; }
-        auto call(Number     const& v) const { return v; }
-        auto call(String     const& v) const { return v; }
-        auto call(Identifier const& v) const { return v; }
-        auto call(Expressions vv)      const { for (auto& v : vv) v = call(v); return vv; }
+        void call(Boolean&)        const { }
+        void call(Number&)         const { }
+        void call(String&)         const { }
+        void call(Identifier&)     const { }
+        void call(Expressions& vv) const { for (auto& v : vv) call(v); }
 
-        Member    call(Member    const& v) const { return { call(v.obj), call(v.member) }; }
-        Unary     call(Unary     const& v) const { return { v.op, call(v.rhs) }; }
-        Binary    call(Binary    const& v) const { return { call(v.lhs), call(v.rhs), v.op }; }
-        Ternary   call(Ternary   const& v) const { return { call(v.true_), call(v.cond), call(v.false_) }; }
-        Call      call(Call      const& v) const { return { call(v.fun), call(v.params) }; }
-        Subscript call(Subscript const& v) const { return { call(v.obj), call(v.indices) }; }
+        void call(Member& v)      const { call(v.obj); call(v.member); }
+        void call(Unary& v)       const { call(v.rhs); }
+        void call(Binary& v)      const { call(v.lhs); call(v.rhs); }
+        void call(Ternary& v)     const { call(v.true_); call(v.cond); call(v.false_); }
+        void call(Call& v)        const { call(v.fun); call(v.params); }
+        void call(Subscript& v)   const { call(v.obj); call(v.indices); }
 
-        Expression call(Expression const& v) const {
-            if (auto* sub = boost::get<Expression>(&v))
-                return *sub; // remove redundant levels sub-nodes
-            return boost::apply_visitor(*this, v);
+        void call(Expression& orig) const { 
+            // elidde redundant levels sub-nodes
+            auto* nested = &orig;
+            while (auto* sub = boost::get<Expression>(nested)) {
+                nested = sub;
+            }
+            if (nested != &orig) {
+                auto tmp = std::move(*nested);
+                orig = std::move(tmp);
+            }
+            boost::apply_visitor(*this, orig);
         }
     };
 }
