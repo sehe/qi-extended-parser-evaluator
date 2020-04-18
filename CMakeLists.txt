@@ -21,5 +21,5 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-var-tracking-assignments")
 
 FILE(GLOB CHECK_AST_CPPS check_ast_??.cpp)
 ADD_EXECUTABLE(test.exe test.cpp ast.cpp ast_gen.cpp parser.cpp
-    #${CHECK_AST_CPPS}
+    ${CHECK_AST_CPPS}
 )
