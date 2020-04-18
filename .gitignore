@@ -1,4 +1,6 @@
 .*.sw?
+.~lock.stats.csv#
+stats.csv
 tags
 test.exe
 output.txt

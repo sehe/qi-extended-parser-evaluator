@@ -117,9 +117,25 @@ namespace Parser {
                 (start)(expression_)(term_)(simple_)
                 (quoted_string)(identifier_)(list_)
             )
+            auto stats = [&](auto&... rules) {
+                auto reg = [&](auto& rule) {
+                    qi::on_success(rule, [this,&rule](auto&&...) { ++_stats[rule.name()].matched; });
+                    qi::on_error<qi::error_handler_result::rethrow>(rule, [this,&rule](auto&&...) { ++_stats[rule.name()].failed; });
+                };
+                boost::ignore_unused((reg(rules), 1)...);
+            };
+            stats(start, expression_, term_, simple_, quoted_string, identifier_, list_);
         }
 
+        auto get_and_reset_stats() const {
+            auto tmp = _stats;
+            _stats.clear();
+            return tmp;
+        }
     private:
+        struct Stat { size_t matched = 0, failed = 0; };
+        mutable std::map<std::string, Stat> _stats;
+
         px::function<make_<Ast::Binary>        > make_binary{};
         px::function<make_<Ast::Unary>         > make_unary{};
         px::function<make_<Ast::Ternary>       > make_ternary{};
@@ -167,4 +183,5 @@ namespace Parser {
 
     Ast::Expression parse_expression(std::string const& text);
     bool check_ast(std::string const& txt, Ast::Expression const& expected);
+    void report_parser_stats(std::string const& fname);
 }

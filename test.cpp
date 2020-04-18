@@ -373,6 +373,8 @@ int main(int argc, char const** argv) {
     if (args.count("eval")) {
         run_eval_tests();
     }
+
+    Parser::report_parser_stats("stats.csv");
 }
 
 void generate_cases() {
