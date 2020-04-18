@@ -47,7 +47,7 @@ namespace Ast {
     struct OperatorDef {
         Precedence precedence;
         std::string_view token;
-        Operator op;
+        Operator op = Operator::NONE;
 
         bool right_to_left_associative() const { return precedence == 8;      } 
         explicit operator bool() const         { return op != Operator::NONE; } 
@@ -82,8 +82,8 @@ namespace Ast {
     using Expressions = std::vector<Expression>;
 
     struct Member { Expression obj; Identifier member; };
-    struct Unary { Operator op; Expression rhs; };
-    struct Binary { Expression lhs, rhs; Operator op; };
+    struct Unary { Operator op = Operator::NONE; Expression rhs; };
+    struct Binary { Expression lhs, rhs; Operator op = Operator::NONE; };
     struct Ternary { Expression true_, cond, false_; };
     struct Call { Expression fun; Expressions params; };
     struct Subscript { Expression obj; Expressions indices; };

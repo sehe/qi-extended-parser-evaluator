@@ -63,6 +63,16 @@ namespace Parser {
         };
     }
 
+    struct StatKey {
+        std::string rule;
+        qi::debug_handler_state state;
+        std::string ast;
+
+        auto tied() const { return std::tie(rule, state, ast); }
+        bool operator<(StatKey const& k) const { return tied() < k.tied(); }
+    };
+    using StatsMap = std::map<StatKey, size_t>;
+
     template <typename It>
     struct Expression : qi::grammar<It, Ast::Expression()> {
         Expression() : Expression::base_type(start) {
@@ -119,8 +129,11 @@ namespace Parser {
             )
             auto stats = [&](auto&... rules) {
                 auto reg = [&](auto& rule) {
-                    qi::on_success(rule, [this,&rule](auto&&...) { ++_stats[rule.name()].matched; });
-                    qi::on_error<qi::error_handler_result::rethrow>(rule, [this,&rule](auto&&...) { ++_stats[rule.name()].failed; });
+                    qi::debug(rule, [this,&rule](auto&, auto const&, auto& ctx, qi::debug_handler_state s, std::string const& rule_name) {
+                            using boost::fusion::at_c;
+                            ++_stats[StatKey{rule_name, s, boost::lexical_cast<std::string>(at_c<0>(ctx.attributes))}];
+                        });
+
                 };
                 boost::ignore_unused((reg(rules), 1)...);
             };
@@ -133,8 +146,7 @@ namespace Parser {
             return tmp;
         }
     private:
-        struct Stat { size_t matched = 0, failed = 0; };
-        mutable std::map<std::string, Stat> _stats;
+        mutable StatsMap _stats;
 
         px::function<make_<Ast::Binary>        > make_binary{};
         px::function<make_<Ast::Unary>         > make_unary{};
