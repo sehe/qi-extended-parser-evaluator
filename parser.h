@@ -13,14 +13,14 @@ namespace Parser {
     namespace {
         template <typename T> struct make_ {
             template <typename... Args>
-            auto operator()(Args const&... args) const {
-                return T{ args... };
+            auto operator()(Args&... args) const {
+                return T{ std::move(args)... };
             }
         };
 
         template<> struct make_<Ast::Unary> {
-            Ast::Unary operator()(Ast::OperatorDef const* opdef, Ast::Expression const& operand) const {
-                return { opdef->op, operand };
+            Ast::Unary operator()(Ast::OperatorDef const* opdef, Ast::Expression& operand) const {
+                return { opdef->op, std::move(operand) };
             }
         };
 
@@ -35,7 +35,7 @@ namespace Parser {
          * need to transform the AST to reflect that.
          */
         template<> struct make_<Ast::Binary> {
-            Ast::Binary operator()(Ast::Expression const& lhs, Ast::Expression const& rhs, Ast::OperatorDef const* opdef) const {
+            Ast::Binary operator()(Ast::Expression& lhs, Ast::Expression& rhs, Ast::OperatorDef const* opdef) const {
                 if (auto* lhs_binary = boost::get<Ast::Binary>(&lhs)) {
                     auto& lhopdef = operator_def(lhs_binary->op);
                     bool shuffle = opdef->precedence < lhopdef.precedence 
@@ -43,10 +43,10 @@ namespace Parser {
 
                     if (shuffle) {
                         // (L.lhs ? L.rhs) [op] rhs --> L.lhs ? (L.rhs [op] rhs)
-                        return { lhs_binary->lhs, Ast::Binary { lhs_binary->rhs, rhs, opdef->op }, lhs_binary->op };
+                        return { std::move(lhs_binary->lhs), Ast::Binary { std::move(lhs_binary->rhs), rhs, opdef->op }, lhs_binary->op };
                     }
                 }
-                return { lhs, rhs, opdef->op };
+                return { std::move(lhs), std::move(rhs), opdef->op };
             }
         };
     }
