@@ -1,7 +1,6 @@
 #include "parser.h"
 namespace Parser {
     static Parser::Expression<std::string::const_iterator> const s_parser {};
-    static Ast::Simplify const s_clean {};
 
     Ast::Expression parse_expression(std::string const& text) {
         Ast::Expression expr;
@@ -17,8 +16,7 @@ namespace Parser {
     }
 
     bool check_ast(std::string const& txt, Ast::Expression const& expected) {
-        auto actual = parse_expression(txt);
-        s_clean(actual);
+        auto const& actual = parse_expression(txt);
         bool ok = (expected == actual);
         if (ok) {
             //std::cout << txt << " -> " << Ast::MyLang    << actual << " PASSED\n";

@@ -32,10 +32,9 @@ namespace Ast {
             {5, "and", Op::AND},
             {6, "xor", Op::XOR},
             {7, "or",  Op::OR},
-            // Ternary belongs here, but doesn't fit the pattern
+            // level 8 is RTL associative
             {8, ":=",  Op::Assign},
-            // fake entry, for precedence only
-            {8, "if/else",  Op::Conditional},
+            {8, "if/else",  Op::Conditional}, // fake entry, for precedence only
             {0, "?", Op::NONE}
         };
         return s_table;
@@ -82,6 +81,7 @@ namespace Ast { // IO
             OperatorDef const& call(Member     const& )  const { return none_; }
             OperatorDef const& call(Call       const& )  const { return none_; }
             OperatorDef const& call(Subscript  const& )  const { return none_; }
+            OperatorDef const& call(SubExpression const& ) const { return none_; }
             OperatorDef const& call(Ternary    const& )  const { return lookup(Operator::Conditional); }
             OperatorDef const& call(Binary const& e) const { return lookup(e.op); }
             OperatorDef const& call(Unary const& e) const { return lookup(e.op); }
@@ -178,5 +178,8 @@ namespace Ast { // IO
     }
     std::ostream& operator<<(std::ostream&os, Subscript const&o) {
         return os << o.obj << "[" << o.indices << "]";
+    }
+    std::ostream& operator<<(std::ostream&os, SubExpression const&o) {
+        return os << "(" << o.sub << ")";
     }
 }

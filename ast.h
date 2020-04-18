@@ -60,6 +60,7 @@ namespace Ast {
     struct Ternary;
     struct Call;
     struct Subscript;
+    struct SubExpression;
 
     using Expression = boost::make_recursive_variant<
         Boolean,
@@ -72,7 +73,7 @@ namespace Ast {
         boost::recursive_wrapper<Ternary>,
         boost::recursive_wrapper<Call>,
         boost::recursive_wrapper<Subscript>,
-        boost::recursive_variant_
+        boost::recursive_wrapper<SubExpression>
     >::type;
 
     OperatorDef const& operator_def(Operator op);
@@ -86,39 +87,44 @@ namespace Ast {
     struct Ternary { Expression true_, cond, false_; };
     struct Call { Expression fun; Expressions params; };
     struct Subscript { Expression obj; Expressions indices; };
+    struct SubExpression { Expression sub; };
 }
 
 namespace Ast {
-    static inline bool operator==(Member     const& a, Member     const& b) ;
-    static inline bool operator==(Unary      const& a, Unary      const& b) ;
-    static inline bool operator==(Binary     const& a, Binary     const& b) ;
-    static inline bool operator==(Ternary    const& a, Ternary    const& b) ;
-    static inline bool operator==(Call       const& a, Call       const& b) ;
-    static inline bool operator==(Subscript  const& a, Subscript  const& b) ;
+    static inline bool operator==(Member        const& a, Member        const& b) ;
+    static inline bool operator==(Unary         const& a, Unary         const& b) ;
+    static inline bool operator==(Binary        const& a, Binary        const& b) ;
+    static inline bool operator==(Ternary       const& a, Ternary       const& b) ;
+    static inline bool operator==(Call          const& a, Call          const& b) ;
+    static inline bool operator==(Subscript     const& a, Subscript     const& b) ;
+    static inline bool operator==(SubExpression const& a, SubExpression const& b) ;
 
-    static inline bool operator==(Member     const& a, Member     const& b) {
+    static inline bool operator==(Member const& a, Member const& b) {
         return std::tie(a.obj, a.member) == 
                std::tie(b.obj, b.member);
     }
-    static inline bool operator==(Unary      const& a, Unary      const& b) {
+    static inline bool operator==(Unary const& a, Unary const& b) {
         return std::tie(a.op, a.rhs) == 
                std::tie(b.op, b.rhs);
     }
-    static inline bool operator==(Binary     const& a, Binary     const& b) {
+    static inline bool operator==(Binary const& a, Binary const& b) {
         return std::tie(a.lhs, a.op, a.rhs) == 
                std::tie(b.lhs, b.op, b.rhs);
     }
-    static inline bool operator==(Ternary    const& a, Ternary    const& b) {
+    static inline bool operator==(Ternary const& a, Ternary const& b) {
         return std::tie(a.true_, a.cond, a.false_) == 
                std::tie(b.true_, b.cond, b.false_);
     }
-    static inline bool operator==(Call       const& a, Call       const& b) {
+    static inline bool operator==(Call const& a, Call const& b) {
         return std::tie(a.fun, a.params) == 
                std::tie(b.fun, b.params);
     }
-    static inline bool operator==(Subscript  const& a, Subscript  const& b) {
+    static inline bool operator==(Subscript const& a, Subscript const& b) {
         return std::tie(a.obj, a.indices) == 
                std::tie(b.obj, b.indices);
+    }
+    static inline bool operator==(SubExpression const& a, SubExpression const& b) {
+        return a.sub == b.sub;
     }
 }
 
@@ -142,6 +148,7 @@ namespace Ast {
     std::ostream& operator<<(std::ostream& os, Ternary const&o);
     std::ostream& operator<<(std::ostream& os, Call const&o);
     std::ostream& operator<<(std::ostream& os, Subscript const&o);
+    std::ostream& operator<<(std::ostream& os, SubExpression const&o);
 
     struct Simplify {
         using result_type = void;
@@ -157,18 +164,19 @@ namespace Ast {
         void call(Identifier&)     const { }
         void call(Expressions& vv) const { for (auto& v : vv) call(v); }
 
-        void call(Member& v)      const { call(v.obj); call(v.member); }
-        void call(Unary& v)       const { call(v.rhs); }
-        void call(Binary& v)      const { call(v.lhs); call(v.rhs); }
-        void call(Ternary& v)     const { call(v.true_); call(v.cond); call(v.false_); }
-        void call(Call& v)        const { call(v.fun); call(v.params); }
-        void call(Subscript& v)   const { call(v.obj); call(v.indices); }
+        void call(Member& v)        const { call(v.obj); call(v.member); }
+        void call(Unary& v)         const { call(v.rhs); }
+        void call(Binary& v)        const { call(v.lhs); call(v.rhs); }
+        void call(Ternary& v)       const { call(v.true_); call(v.cond); call(v.false_); }
+        void call(Call& v)          const { call(v.fun); call(v.params); }
+        void call(Subscript& v)     const { call(v.obj); call(v.indices); }
+        void call(SubExpression& v) const { call(v.sub); }
 
         void call(Expression& orig) const { 
             // elidde redundant levels sub-nodes
             auto* nested = &orig;
-            while (auto* sub = boost::get<Expression>(nested)) {
-                nested = sub;
+            while (auto* sub = boost::get<SubExpression>(nested)) {
+                nested = &sub->sub;
             }
             if (nested != &orig) {
                 auto tmp = std::move(*nested);

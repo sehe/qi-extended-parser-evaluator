@@ -411,5 +411,9 @@ namespace Eval {
             LValue obj = call(o.obj);
             return obj[indices];
         }
+
+        Dynamic call(Ast::SubExpression const& o) {
+            return call(o.sub);
+        }
     };
 }
