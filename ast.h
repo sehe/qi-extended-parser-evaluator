@@ -149,40 +149,4 @@ namespace Ast {
     std::ostream& operator<<(std::ostream& os, Call const&o);
     std::ostream& operator<<(std::ostream& os, Subscript const&o);
     std::ostream& operator<<(std::ostream& os, SubExpression const&o);
-
-    struct Simplify {
-        using result_type = void;
-
-        template <typename T> void operator()(T& v) const {
-            return call(v);
-        }
-
-      private:
-        void call(Boolean&)        const { }
-        void call(Number&)         const { }
-        void call(String&)         const { }
-        void call(Identifier&)     const { }
-        void call(Expressions& vv) const { for (auto& v : vv) call(v); }
-
-        void call(Member& v)        const { call(v.obj); call(v.member); }
-        void call(Unary& v)         const { call(v.rhs); }
-        void call(Binary& v)        const { call(v.lhs); call(v.rhs); }
-        void call(Ternary& v)       const { call(v.true_); call(v.cond); call(v.false_); }
-        void call(Call& v)          const { call(v.fun); call(v.params); }
-        void call(Subscript& v)     const { call(v.obj); call(v.indices); }
-        void call(SubExpression& v) const { call(v.sub); }
-
-        void call(Expression& orig) const { 
-            // elidde redundant levels sub-nodes
-            auto* nested = &orig;
-            while (auto* sub = boost::get<SubExpression>(nested)) {
-                nested = &sub->sub;
-            }
-            if (nested != &orig) {
-                auto tmp = std::move(*nested);
-                orig = std::move(tmp);
-            }
-            boost::apply_visitor(*this, orig);
-        }
-    };
 }
