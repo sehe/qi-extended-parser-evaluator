@@ -341,8 +341,8 @@ namespace Eval {
             Dynamic lhs = call(o.lhs); // be sure to evaluate only once
             Dynamic rhs = call(o.rhs);
 
-            ValueV rhsv = lhs.value();
-            ValueV lhsv = rhs.value();
+            ValueV lhsv = lhs.value();
+            ValueV rhsv = rhs.value();
 
             auto arith = [&](auto op) {
                 return boost::apply_visitor(detail::Arithmetic<decltype(op)>{}, lhsv, rhsv);
