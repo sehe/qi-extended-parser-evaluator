@@ -34,6 +34,7 @@ static inline auto make_context() {
     Variable ctx;
     Value f = demofunction;
     Value identity = [](Values v) { return v.front(); };
+    ctx["f"] = f;
     ctx["a"] = Value(43);
     ctx["b"] = Value(1);
     ctx["c"] = Value(7);
@@ -119,6 +120,30 @@ void check_eval(Eval::Variable context, std::vector<std::string> const& inputs) 
             std::cout << "Failed (" << pe.what() << ")\n";
         }
     }
+}
+
+void run_issue_tests()
+{
+    std::cout << "issue#2\n-----------------------\n";
+
+    check_eval(
+        make_context(), // issue #2
+                        // https://github.com/sehe/qi-extended-parser-evaluator/issues/2
+        {
+            R"(x)",        // OK
+            R"(3*4)",      // OK
+            R"(f(1,2,3))", // OK
+            R"(x := y)",   // OK
+            R"(x := 10)",  // OK
+
+            // with blank at end
+            R"(x )",        // OK
+            R"(3 )",        // BOOST_ASSERT
+            R"(3*4 )",      // BOOST_ASSERT
+            R"(f(1,2,3) )", // BOOST_ASSERT
+            R"(x := y )",   // BOOST_ASSERT
+            R"(x := 10 )",  // BOOST_ASSERT
+        });
 }
 
 void run_eval_tests()
@@ -300,7 +325,7 @@ int main(int argc, char const** argv) {
     std::set<std::string> const args{argv + 1, argv + argc};
 
     {
-        std::set<std::string> known{"generate", "trace", "str", "eval", "ast"},
+        std::set<std::string> known{"generate", "trace", "str", "eval", "ast", "issue"},
             unknown;
         std::set_difference(begin(args), end(args), begin(known), end(known),
                             inserter(unknown, end(unknown)));
@@ -389,6 +414,10 @@ int main(int argc, char const** argv) {
         CHECK_STR(x = y = z, "x := y := z");
         CHECK_STR((x = y) = z, "(x := y) := z");
         CHECK_STR(x = (y = z), "x := y := z");
+    }
+
+    if (args.count("issue")) {
+        run_issue_tests();
     }
 
     if (args.count("eval")) {
