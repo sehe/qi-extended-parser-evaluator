@@ -6,7 +6,8 @@ namespace Parser {
         Ast::Expression expr;
 
         auto f = text.begin(), l = text.end();
-        if (!qi::parse(f, l, s_parser >> *qi::space, expr)) { // to allow trailing whitespace
+        if (!qi::parse(f, l, s_parser >> qi::omit[*qi::space],
+                       expr)) { // to allow trailing whitespace
             throw InvalidExpression();
         }
         if (f != l) {
