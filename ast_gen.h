@@ -18,10 +18,10 @@ namespace AstGen {
 
         operator Ast::Expression const&() const { return wrapped; }
 
-        Gen operator=(Gen const& rhs) const { return Ast::Binary { wrapped, Gen(rhs), Operator::Assign }; }
+        Gen operator=(Gen const& rhs) const { return Ast::Binary { wrapped, Gen(rhs), Operator::Assign,  Ast::SourceLocation{} }; }
 
         template <typename... T> Gen operator()(T const&... v) const {
-            return { Ast::Call { wrapped, {Gen(v)...} } };
+            return {Ast::Call{wrapped, {Gen(v)...}, Ast::SourceLocation{}}};
         }
         Gen operator[](ListGen) const;
 
@@ -29,7 +29,7 @@ namespace AstGen {
             Ast::Expression obj;
             Ast::Identifier member;
 
-            Gen gen() const { return {Ast::Member {obj, member} }; }
+            Gen gen() const { return {Ast::Member {obj, member, Ast::SourceLocation{}} }; }
             operator Gen() const { return gen(); }
             operator Ast::Expression() const { return gen(); }
             template <typename... T> Gen operator()(T const&... v) const {
@@ -42,28 +42,28 @@ namespace AstGen {
             qux { wrapped, Ast::Identifier("qux") };
     };
 
-    static inline Gen operator+(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Plus }}; }
-    static inline Gen operator-(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Minus }}; }
-    static inline Gen operator*(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Mult }}; }
-    static inline Gen operator/(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Div }}; }
-    static inline Gen operator%(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Mod }}; }
+    static inline Gen operator+(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Plus, Ast::SourceLocation{} }}; }
+    static inline Gen operator-(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Minus, Ast::SourceLocation{} }}; }
+    static inline Gen operator*(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Mult, Ast::SourceLocation{} }}; }
+    static inline Gen operator/(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Div, Ast::SourceLocation{} }}; }
+    static inline Gen operator%(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Mod, Ast::SourceLocation{} }}; }
 
-    static inline Gen operator< (Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Less }}; }
-    static inline Gen operator<=(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::LessEq }}; }
-    static inline Gen operator> (Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Greater }}; }
-    static inline Gen operator>=(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::GreaterEq }}; }
-    static inline Gen operator==(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Equal }}; }
-    static inline Gen operator!=(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::NotEq }}; }
+    static inline Gen operator< (Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Less, Ast::SourceLocation{} }}; }
+    static inline Gen operator<=(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::LessEq, Ast::SourceLocation{} }}; }
+    static inline Gen operator> (Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Greater, Ast::SourceLocation{} }}; }
+    static inline Gen operator>=(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::GreaterEq, Ast::SourceLocation{} }}; }
+    static inline Gen operator==(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::Equal, Ast::SourceLocation{} }}; }
+    static inline Gen operator!=(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::NotEq, Ast::SourceLocation{} }}; }
 
-    static inline Gen operator& (Gen a, Gen b) { return {Ast::Binary { a, b, Operator::AND }}; }
-    static inline Gen operator| (Gen a, Gen b) { return {Ast::Binary { a, b, Operator::OR }}; }
-    static inline Gen operator^ (Gen a, Gen b) { return {Ast::Binary { a, b, Operator::XOR }}; }
-    static inline Gen operator&&(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::AND }}; }
-    static inline Gen operator||(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::OR }}; }
+    static inline Gen operator& (Gen a, Gen b) { return {Ast::Binary { a, b, Operator::AND, Ast::SourceLocation{} }}; }
+    static inline Gen operator| (Gen a, Gen b) { return {Ast::Binary { a, b, Operator::OR, Ast::SourceLocation{} }}; }
+    static inline Gen operator^ (Gen a, Gen b) { return {Ast::Binary { a, b, Operator::XOR, Ast::SourceLocation{} }}; }
+    static inline Gen operator&&(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::AND, Ast::SourceLocation{} }}; }
+    static inline Gen operator||(Gen a, Gen b) { return {Ast::Binary { a, b, Operator::OR, Ast::SourceLocation{} }}; }
 
-    static inline Gen operator+(Gen a) { return {Ast::Unary { Operator::UnaryPlus, a }}; }
-    static inline Gen operator-(Gen a) { return {Ast::Unary { Operator::UnaryMinus, a }}; }
-    static inline Gen operator!(Gen a) { return {Ast::Unary { Operator::NOT, a }}; }
+    static inline Gen operator+(Gen a) { return {Ast::Unary { Operator::UnaryPlus, a, Ast::SourceLocation{} }}; }
+    static inline Gen operator-(Gen a) { return {Ast::Unary { Operator::UnaryMinus, a, Ast::SourceLocation{} }}; }
+    static inline Gen operator!(Gen a) { return {Ast::Unary { Operator::NOT, a, Ast::SourceLocation{} }}; }
 
     struct ListGen {
         std::vector<Ast::Expression> elements;

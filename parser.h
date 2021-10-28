@@ -16,7 +16,8 @@ namespace Parser {
             return std::forward<V>(v);
         }
 
-        static Ast::Expression unnest(Ast::Expression&& e) {
+        static Ast::Expression unnest(Ast::Expression&& e)
+        {
             auto* real = &e;
             while (auto* nested = boost::get<Ast::SubExpression>(real))
                 real = &nested->sub;
@@ -24,15 +25,18 @@ namespace Parser {
         }
 
         template <typename T> struct make_ {
-            template <typename... Args>
-            auto operator()(Args&... args) const {
-                return T{ unnest(std::move(args))... };
+            template <typename... Args> auto operator()(Args&... args) const
+            {
+                return T{unnest(std::move(args))..., Ast::SourceLocation{}};
             }
         };
 
         template<> struct make_<Ast::Unary> {
-            Ast::Unary operator()(Ast::OperatorDef const* opdef, Ast::Expression& operand) const {
-                return { opdef->op, unnest(std::move(operand)) };
+            Ast::Unary operator()(Ast::OperatorDef const* opdef,
+                                  Ast::Expression&        operand) const
+            {
+                return {opdef->op, unnest(std::move(operand)),
+                        Ast::SourceLocation{}};
             }
         };
 
@@ -47,18 +51,26 @@ namespace Parser {
          * need to transform the AST to reflect that.
          */
         template<> struct make_<Ast::Binary> {
-            Ast::Binary operator()(Ast::Expression& lhs, Ast::Expression& rhs, Ast::OperatorDef const* opdef) const {
+            Ast::Binary operator()(Ast::Expression& lhs, Ast::Expression& rhs,
+                                   Ast::OperatorDef const* opdef) const
+            {
                 if (auto* lhs_binary = boost::get<Ast::Binary>(&lhs)) {
                     auto lhprec = operator_def(lhs_binary->op).precedence;
-                    bool shuffle = opdef->precedence < lhprec 
-                        || (opdef->right_to_left_associative() && opdef->precedence == lhprec);
+                    bool shuffle = opdef->precedence < lhprec ||
+                        (opdef->right_to_left_associative() &&
+                         opdef->precedence == lhprec);
 
                     if (shuffle) {
                         // (L.lhs ? L.rhs) [op] rhs --> L.lhs ? (L.rhs [op] rhs)
-                        return { std::move(lhs_binary->lhs), Ast::Binary { std::move(lhs_binary->rhs), unnest(std::move(rhs)), opdef->op }, lhs_binary->op };
+                        return {std::move(lhs_binary->lhs),
+                                Ast::Binary{std::move(lhs_binary->rhs),
+                                            unnest(std::move(rhs)), opdef->op,
+                                            Ast::SourceLocation{}},
+                                lhs_binary->op, Ast::SourceLocation{}};
                     }
                 }
-                return { unnest(std::move(lhs)), unnest(std::move(rhs)), opdef->op };
+                return {unnest(std::move(lhs)), unnest(std::move(rhs)),
+                        opdef->op, Ast::SourceLocation{}};
             }
         };
     }
@@ -117,6 +129,14 @@ namespace Parser {
                 (start)(expression_)(term_)(simple_)
                 (quoted_string)(identifier_)(list_)
             )
+
+            auto annotate = px::bind(_annotate, _val, _1, _3);
+            qi::on_success(start, annotate);
+            qi::on_success(expression_,   annotate);
+            qi::on_success(term_,         annotate);
+            qi::on_success(simple_,       annotate);
+            qi::on_success(quoted_string, annotate);
+            qi::on_success(identifier_,   annotate);
         }
 
     private:
@@ -127,6 +147,26 @@ namespace Parser {
         px::function<make_<Ast::Call>          > make_call{};
         px::function<make_<Ast::Subscript>     > make_subscript{};
         px::function<make_<Ast::SubExpression> > make_sub{};
+
+        struct annotation_f {
+          typedef void result_type;
+
+          template <typename Val, typename First, typename Last>
+          void operator()(Val &v, First f, Last l) const {
+            do_annotate(v, f, l);
+          }
+
+        private:
+          template <typename Val>
+          void static do_annotate(Val& v, It f, It l,
+                                  decltype(v._loc)* /*_enable*/ = nullptr)
+          {
+              // C++20: v._loc.range = {f, l};
+              v._loc.range = std::string_view(&*f, std::distance(f, l));
+          }
+          static void do_annotate(...) {}
+        };
+        annotation_f _annotate{};
 
         using Ops = qi::symbols<char, Ast::OperatorDef const*>;
         Ops _unops, _binops, _rtlops;

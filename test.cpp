@@ -357,19 +357,19 @@ int main(int argc, char const** argv) {
 
         using Parser::check_ast;
         using Parser::parse_expression;
-        ++(check_ast("x if y else z",                  (Ast::Ternary { x, y, z }))?good:bad);
-        ++(check_ast("x if y else y if z else x",      (Ast::Ternary { x, y, parse_expression("y if z else x") }))?good:bad);
-        ++(check_ast("x or y if y and z else z xor x", (Ast::Ternary { x or y, y and z, z xor x }))?good:bad);
+        ++(check_ast("x if y else z",                  (Ast::Ternary { x, y, z, {} }))?good:bad);
+        ++(check_ast("x if y else y if z else x",      (Ast::Ternary { x, y, parse_expression("y if z else x"), {} }))?good:bad);
+        ++(check_ast("x or y if y and z else z xor x", (Ast::Ternary { x or y, y and z, z xor x, {} }))?good:bad);
         ++(check_ast("x if y and z if x else z else z xor x if y else z or x", ( 
-             Ast::Ternary { x, Ast::Ternary { y and z, x, z}, Ast::Ternary { z xor x, y, z or x } }))?good:bad);
+             Ast::Ternary { x, Ast::Ternary { y and z, x, z, {}}, Ast::Ternary { z xor x, y, z or x, {} }, {} }))?good:bad);
 
-        ++(check_ast("x = (y if z else x)", (x == Ast::Ternary { y, z, x }))?good:bad);
-        ++(check_ast("(x = y) if z else x", (Ast::Ternary { x==y, z, x }))?good:bad);
-        ++(check_ast("x = y if z else x", (Ast::Ternary { x==y, z, x }))?good:bad);
+        ++(check_ast("x = (y if z else x)", (x == Ast::Ternary { y, z, x, {} }))?good:bad);
+        ++(check_ast("(x = y) if z else x", (Ast::Ternary { x==y, z, x, {} }))?good:bad);
+        ++(check_ast("x = y if z else x", (Ast::Ternary { x==y, z, x, {} }))?good:bad);
 
-        ++(check_ast("x := (y if z else x)", (x = Ast::Ternary { y, z, x }))?good:bad);
-        ++(check_ast("(x := y) if z else x", (Ast::Ternary { x=y, z, x }))?good:bad);
-        ++(check_ast("x := y if z else x", (Ast::Ternary { x=y, z, x }))?good:bad);
+        ++(check_ast("x := (y if z else x)", (x = Ast::Ternary { y, z, x, {} }))?good:bad);
+        ++(check_ast("(x := y) if z else x", (Ast::Ternary { x=y, z, x, {} }))?good:bad);
+        ++(check_ast("x := y if z else x", (Ast::Ternary { x=y, z, x, {} }))?good:bad);
 
         // take associativity into account
         ++(check_ast("x+y+z", x+y+z)?good:bad);

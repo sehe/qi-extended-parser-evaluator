@@ -12,10 +12,18 @@
 
 namespace Ast {
     using Identifier = std::string;
+
+    struct SourceLocation {
+        //unsigned line = -1, column = -1, length = 0;
+        std::string_view range;
+    };
+
     struct String : std::string {
-        String(std::string const& s) : std::string(s) {}
+        String(std::string const& s, SourceLocation loc = {}) : std::string(s), _loc(loc) {}
         using std::string::string;
         using std::string::operator=;
+
+        SourceLocation _loc;
 
     private:
         std::string const& str() const { return *this; }
@@ -81,13 +89,13 @@ namespace Ast {
 
     using Expressions = std::vector<Expression>;
 
-    struct Member { Expression obj; Identifier member; };
-    struct Unary { Operator op; Expression rhs; };
-    struct Binary { Expression lhs, rhs; Operator op; };
-    struct Ternary { Expression true_, cond, false_; };
-    struct Call { Expression fun; Expressions params; };
-    struct Subscript { Expression obj; Expressions indices; };
-    struct SubExpression { Expression sub; };
+    struct Member { Expression obj; Identifier member; SourceLocation _loc; };
+    struct Unary { Operator op = Operator::NONE; Expression rhs; SourceLocation _loc; };
+    struct Binary { Expression lhs, rhs; Operator op = Operator::NONE; SourceLocation _loc; };
+    struct Ternary { Expression true_, cond, false_; SourceLocation _loc; };
+    struct Call { Expression fun; Expressions params; SourceLocation _loc; };
+    struct Subscript { Expression obj; Expressions indices; SourceLocation _loc; };
+    struct SubExpression { Expression sub; SourceLocation _loc; };
 }
 
 namespace Ast {
