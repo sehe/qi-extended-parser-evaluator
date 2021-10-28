@@ -297,7 +297,28 @@ static AstGen::Gen const
     z = Ast::Identifier("z");
 
 int main(int argc, char const** argv) {
-    std::set<std::string> const args { argv+1, argv+argc };
+    std::set<std::string> const args{argv + 1, argv + argc};
+
+    {
+        std::set<std::string> known{"generate", "trace", "str", "eval", "ast"},
+            unknown;
+        std::set_difference(begin(args), end(args), begin(known), end(known),
+                            inserter(unknown, end(unknown)));
+
+        if (not unknown.empty()) {
+            std::cerr << "Warning: Ignoring unrecognized options:";
+            for (auto& option : unknown)
+                std::cerr << " " << option;
+            std::cerr << std::endl;
+        }
+        if (args.size() == unknown.size()) {
+            std::cerr << "Warning: You probably want to specify one of:";
+            for (auto& option : known)
+                std::cerr << " " << option;
+            std::cerr << std::endl;
+        }
+    }
+
     if (args.count("generate")) {
         generate_cases();
     }
